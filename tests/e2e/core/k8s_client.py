@@ -8,7 +8,7 @@ from typing import Any
 from tests.e2e.core.runner import run, run_unchecked
 
 _CLUSTER_ORDER_NOT_FOUND_RE = re.compile(
-    r"\bclusterorders?(?:[./\s\"']|$).*?\b(?:not\s+found|notfound)\b", re.IGNORECASE
+    r"\bclusterorders?(?:\.[^\s\"']+)?\s+[\"']?([^\"'\s]+)[\"']?\s+not\s+found\b", re.IGNORECASE
 )
 
 
@@ -310,7 +310,8 @@ class K8sClient:
         output, rc = self._get(*args, checked=checked)
         if rc == 0:
             return output
-        if _CLUSTER_ORDER_NOT_FOUND_RE.search(output):
+        not_found = _CLUSTER_ORDER_NOT_FOUND_RE.search(output)
+        if not_found is not None and not_found.group(1) == name:
             return None
         raise subprocess.CalledProcessError(rc, [*self._base(), *args], output=output, stderr=output)
 
