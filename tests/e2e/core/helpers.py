@@ -346,7 +346,7 @@ def wait_for_cluster_deletion(*, k8s: K8sClient, name: str) -> None:
         _force_cleanup_agentcluster_finalizers(k8s=k8s, name=name)
         _force_cleanup_agent_labels(k8s=k8s, name=name)
         _force_cleanup_machine_preterminate_hooks(k8s=k8s, name=name)
-        return not k8s.is_present(resource="clusterorder", name=name)
+        return k8s.get_cluster_order_phase(name=name, checked=False) is None
 
     poll_until(
         fn=_check_deleted, until=lambda v: v is True, retries=120, delay=10, description=f"{name} ClusterOrder deletion"
@@ -442,7 +442,9 @@ def _force_cleanup_machine_preterminate_hooks(*, k8s: K8sClient, name: str) -> N
 def wait_for_cluster_deleting(*, k8s: K8sClient, name: str) -> None:
     poll_until(
         fn=lambda: k8s.get_cluster_order_phase(name=name, checked=False),
-        until=lambda v: v == "Deleting",
+        # get_cluster_order_phase returns None only for a missing ClusterOrder;
+        # an empty phase from an existing object is not a deletion signal.
+        until=lambda v: v == "Deleting" or v is None,
         retries=30,
         delay=5,
         description=f"{name} ClusterOrder Deleting phase",

@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from typing import Any
 
 from tests.e2e.core.runner import run, run_unchecked
+
+_CLUSTER_ORDER_NOT_FOUND_RE = re.compile(
+    r"\bclusterorders?(?:[./\s\"']|$).*?\b(?:not\s+found|notfound)\b", re.IGNORECASE
+)
 
 
 class K8sClient:
@@ -297,11 +302,17 @@ class K8sClient:
         )
         return output if rc == 0 else ""
 
-    def get_cluster_order_phase(self, *, name: str, checked: bool = True) -> str:
-        output, rc = self._get(
-            "get", "clusterorder", name, "-n", self.namespace, "-o", "jsonpath={.status.phase}", checked=checked
-        )
-        return output if rc == 0 else ""
+    def get_cluster_order_phase(self, *, name: str, checked: bool = True) -> str | None:
+        # In unchecked mode, None means that this ClusterOrder is gone. Keep a
+        # successful lookup with no status phase as "" so pollers do not treat
+        # an unrelated kubectl failure as deletion.
+        args = ("get", "clusterorder", name, "-n", self.namespace, "-o", "jsonpath={.status.phase}")
+        output, rc = self._get(*args, checked=checked)
+        if rc == 0:
+            return output
+        if _CLUSTER_ORDER_NOT_FOUND_RE.search(output):
+            return None
+        raise subprocess.CalledProcessError(rc, [*self._base(), *args], output=output, stderr=output)
 
     def get_cluster_order_latest_job_id(self, *, name: str, job_type: str, checked: bool = True) -> str:
         output, rc = self._get("get", "clusterorder", name, "-n", self.namespace, "-o", "json", checked=checked)
