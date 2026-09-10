@@ -38,6 +38,8 @@ def test_cluster_order_not_found_is_distinct_from_an_empty_phase() -> None:
         'Error from server (NotFound): namespaces "tenant-a" not found',
         'Error from server (NotFound): namespaces "clusterorders" not found',
         'Error from server (NotFound): clusterorders.osac.openshift.io "other-cluster" not found',
+        'Error from server (NotFound): clusterorders.osac.openshift.io "cluster-a" not found: extra text',
+        'prefix: Error from server (NotFound): clusterorders.osac.openshift.io "cluster-a" not found',
         "Unable to connect to the server: dial tcp: lookup api.example.test: no such host",
     ],
 )
